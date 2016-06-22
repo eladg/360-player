@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>HTML5 360 Video Player</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+      body {
+        background-color: #000;
+        color: #fff;
+        margin: 0px;
+        overflow: hidden;
+        font-family:Monospace;
+        font-size:13px;
+        text-align:center;
+        font-weight: bold;
+        text-align:center;
+      }
+      a {
+        color:#0078ff;
+      }
+      #info {
+        color:#fff;
+        position: absolute;
+        top: 5px; width: 100%;
+        z-index:100;
+      }
+    </style>
+</head>
+<body>
+
+<script src="js/three.min.js"></script>
+<script src="js/Detector.js"></script>
+<script src="js/three.js-controls-orbitControls.js"></script>
+<script src="js/DeviceOrientationControls.js"></script>
+<script src="js/StereoEffect.js"></script>
+<script src="js/stats.min.js"></script>
+
+<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
+
+<script>
+
+  // standard global variables
+  var container, scene, camera, renderer, controls, stats;
+  var mobile = false;
+
+  // custom global variables
+  var video, videoImage, videoImageContext, videoTexture;
+  var dlight, hemiLight;
+  var worldSphereRadius = 1000;
+  var worldSphere;
+
+  var cubesData = [
+    {
+      rotation: 0.1,
+      size: [ 50, 50, 50],
+      position: new THREE.Vector3(-250,-250,0),
+      color: 0x666666,
+      move_position_vector: new THREE.Vector3(1,0,0),
+      material: {
+        color: "rgb(60, 240, 180)",
+        transparent: false,
+        opacity: 0.8,
+        depthTest: true,
+        depthWrite: true,
+        emissive: "#000000",
+        specular: "#3e3e3e"
+      }
+    },
+    {
+      rotation: 0.2,
+      size: [ 50, 50, 50],
+      position: new THREE.Vector3(-250,250,0),
+      color: 0x555555,
+      move_position_vector: new THREE.Vector3(0,1,0),
+      material: {
+        color: "rgb(60, 180, 240)",
+        transparent: false,
+        opacity: 0.8,
+        depthTest: true,
+        depthWrite: true,
+        emissive: "#000000",
+        specular: "#3e3e3e"
+      }
+    },
+    {
+      rotation: 0.3,
+      size: [ 50, 50, 50],
+      position: new THREE.Vector3(250,-250,0),
+      color: 0x4444FF,
+      move_position_vector: new THREE.Vector3(0,0,1),
+      material: {
+        color: "rgb(240, 60, 180)",
+        transparent: false,
+        opacity: 0.8,
+        depthTest: true,
+        depthWrite: true,
+        emissive: "#000000",
+        specular: "#3e3e3e"
+      }
+    },
+    {
+      rotation: 0.1,
+      size: [ 50, 50, 50],
+      position: new THREE.Vector3(250,250,100),
+      color: 0x4444FF,
+      move_position_vector: new THREE.Vector3(1,1,0),
+      material: {
+        color: "rgb(180, 240, 60)",
+        transparent: false,
+        opacity: 0.8,
+        depthTest: true,
+        depthWrite: true,
+        emissive: "#000000",
+        specular: "#3e3e3e"
+      }
+    }
+  ];
+
+  var cubes = [];
+
+  init();
+  animate();
+
+  function init() {
+
+    // ==================================
+    // Scene
+    // ==================================
+    scene = new THREE.Scene();
+
+    // ==================================
+    // Camera
+    // ==================================
+    var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+    var VIEW_ANGLE = 90, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+    camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
+    camera.position.set(0,0,5);
+    scene.add(camera);
+
+    // ==================================
+    // Renderers
+    // ==================================
+    if ( Detector.webgl ) {
+      renderer = new THREE.WebGLRenderer( {antialias:true} );
+    } else {
+      renderer = new THREE.CanvasRenderer();
+    }
+
+    renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+    container = document.getElementById('ThreeJS');
+    container.appendChild( renderer.domElement );
+
+    // ==================================
+    // Events
+    // ==================================
+    window.addEventListener('deviceorientation', setOrientationControls, true);
+    window.addEventListener('resize', onWindowResize, false);
+
+    // ==================================
+    // Stats
+    // ==================================
+    stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.bottom = '0px';
+    stats.domElement.style.zIndex = 100;
+    container.appendChild( stats.domElement );
+
+    // ==================================
+    // Controls
+    // ==================================
+    controls = new THREE.OrbitControls( camera, renderer.domElement );
+    controls.enablePan = false;
+    controls.autoPan = true;
+
+    // 
+    // Lights
+    // 
+
+    // HemisphereLight
+    hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+    hemiLight.color.setHSL( 0.6, 0.6, 0.6 );
+    hemiLight.groundColor.setHSL( 1, 1, 1 );
+    hemiLight.position.set( 0, 500, 0 );
+    scene.add( hemiLight );
+
+    dlight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+    dlight.position.set(0, 0, 0).normalize();
+    scene.add(dlight);
+
+
+    // ==================================
+    // Meshes
+    // ==================================
+    // geometry = new THREE.BoxGeometry( 200, 200, 200 );
+    // material = new THREE.MeshBasicMaterial( { color: 0x00FF00, wireframe: true } );
+
+    // mesh = new THREE.Mesh( geometry, material );
+    // scene.add( mesh );
+
+    // world sphere
+    geometry = new THREE.SphereGeometry( worldSphereRadius );
+    material = new THREE.MeshBasicMaterial( { visable: false, opacity: 0.0, transparent: true} );
+    worldSphere = new THREE.Mesh( geometry, material );
+    scene.add( worldSphere );
+
+    for (var i = 0; i < cubesData.length; i++) {
+      var cube = cubesData[i];
+      geometry = new THREE.BoxGeometry( cube.size[0], cube.size[1], cube.size[2] );
+      material = new THREE.MeshPhongMaterial( cube.material );
+
+      mesh = new THREE.Mesh( geometry, material );
+      mesh.position.set(cube.position.x, cube.position.y, cube.position.z);
+      cubes.push(mesh);
+      scene.add( mesh );
+    }
+
+
+    // ==================================
+    // Video
+    // ==================================
+    video = document.createElement( 'video' );
+    video.id = '360video';
+    video.type = 'video/mp4;';
+    video.src = "assets/skydiving-reg.mp4";
+    video.load();
+    video.play();
+
+    videoImage = document.createElement( 'canvas' );
+    videoImage.width = 1280;
+    videoImage.height = 640;
+    videoImageContext = videoImage.getContext( '2d' );
+    videoImageContext.fillStyle = '#FF0000';
+    videoImageContext.fillRect( 0, 0, videoImage.width, videoImage.height );
+
+    videoTexture = new THREE.Texture( videoImage );
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+
+    var movieMaterial = new THREE.MeshBasicMaterial( { map: videoTexture, overdraw: true, side:THREE.DoubleSide } );
+    var movieGeometry = new THREE.SphereGeometry(1280, 12, 12);
+    var movieScreen   = new THREE.Mesh( movieGeometry, movieMaterial );
+    movieScreen.position.set(0,0,0);
+    scene.add(movieScreen);
+  }
+
+  function setOrientationControls(e) {
+    if (!e.alpha) {return;}
+
+    controls = new THREE.DeviceOrientationControls(camera, true);
+    controls.connect();
+    controls.update();
+
+    window.removeEventListener('deviceorientation', setOrientationControls, true);
+    renderer.domElement.addEventListener('click', function () {
+      if (this.requestFullscreen) {
+          this.requestFullscreen();
+      } else if (this.msRequestFullscreen) {
+          this.msRequestFullscreen();
+      } else if (this.mozRequestFullScreen) {
+          this.mozRequestFullScreen();
+      } else if (this.webkitRequestFullscreen) {
+          this.webkitRequestFullscreen();
+      }
+    });
+
+    renderer = new THREE.StereoEffect(renderer);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    mobile = true;
+  }
+
+  function rotate(mesh, mod) {
+    mesh.rotateX(0.1 * mod);
+    mesh.rotateY(0.2 * mod);
+  }
+
+  function updateLightsPosition() {
+    var time = Date.now() * 0.00025;
+    var mod = 150;
+    dlight.position.x = Math.cos( time * 0.7 ) * mod;
+    dlight.position.z = Math.cos( time * 0.5 ) * mod;
+  }
+
+  function updatePositionsByPositionVector() {
+    for (var i = 0; i < cubes.length; i++) {
+      object = cubes[i];
+      _x = object.position.x;
+      _y = object.position.y;
+      _z = object.position.z;
+
+      object.position.setX(_x + cubesData[i].move_position_vector.x);
+      object.position.setY(_y + cubesData[i].move_position_vector.y);
+      object.position.setZ(_z + cubesData[i].move_position_vector.z);
+    }
+  }
+
+  function invertMoveVector(object, objectConfig) {
+    objectConfig.move_position_vector.multiplyScalar(-1);
+  }
+
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  function animate() {
+    requestAnimationFrame( animate );
+
+    // rotate
+    for (var i = 0; i < cubes.length; i++) {
+      rotate(cubes[i], cubesData[i].rotation);
+    }
+
+    // limit cubes position by world sphere
+    for (var i = 0; i < cubes.length; i++) {
+      if (worldSphere.position.distanceTo(cubes[i].position) > worldSphereRadius) {
+        invertMoveVector(cubes[i],cubesData[i]);
+      }
+    }    
+
+    updateLightsPosition();
+    updatePositionsByPositionVector();
+
+    render();
+    update();
+  }
+
+  function update() {
+    controls.update();
+    stats.update();
+  }
+
+  function render() {
+
+    if ( video.readyState === video.HAVE_ENOUGH_DATA ) {
+      videoImageContext.drawImage( video, 0, 0 );
+      if ( videoTexture ) {
+        videoTexture.needsUpdate = true;
+      }
+    }
+
+    if (mobile) {
+      camera.position.set(0, 0, 0)
+      camera.translateZ(5);
+    }
+
+    renderer.render( scene, camera );
+  }
+
+</script>
+
+</body>
+</html>
