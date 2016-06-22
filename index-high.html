@@ -225,7 +225,7 @@
     video.id = '360video';
     video.type = 'video/mp4;';
     // video.src = getURLParameter("videoUrl");
-    video.src = "assets/skydiving-reg.mp4"
+    video.src = "assets/skydiving-high.mp4"
     video.crossOrigin = "Anonymous"
     // video.src = "assets/skydiving-reg.mp4"
     video.load();
@@ -237,8 +237,8 @@
     }
 
     videoImage = document.createElement( 'canvas' );
-    videoImage.width = 1280;
-    videoImage.height = 640;
+    videoImage.width = 3840;
+    videoImage.height = 1920;
     videoImageContext = videoImage.getContext( '2d' );
     videoImageContext.fillStyle = '#FF0000';
     videoImageContext.fillRect( 0, 0, videoImage.width, videoImage.height );
@@ -248,7 +248,7 @@
     videoTexture.magFilter = THREE.LinearFilter;
 
     var movieMaterial = new THREE.MeshBasicMaterial( { map: videoTexture, overdraw: true, side:THREE.DoubleSide } );
-    var movieGeometry = new THREE.SphereGeometry(1280, 12, 12);
+    var movieGeometry = new THREE.SphereGeometry(3840, 12, 12);
     var movieScreen   = new THREE.Mesh( movieGeometry, movieMaterial );
     movieScreen.position.set(0,0,0);
     scene.add(movieScreen);
